@@ -9,7 +9,7 @@
   "branch_index": 0,
   "config": {
     "api_key": "",
-    "model": "gemini-2.5-flash-preview-05-20",
+    "model": "gemini-2.5-flash",
     "active_profile": "MCQ",
     "profiles": {
       "MCQ": {
