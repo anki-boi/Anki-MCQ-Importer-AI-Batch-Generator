@@ -1,4 +1,4 @@
-# Anki MCQ Importer - AI Batch Generator (v4.2.0)
+# Anki MCQ Importer - AI Batch Generator (v4.2.1)
 
 An Anki add-on that batch-processes folders of study images with Google Gemini and creates high-yield cards into organized subdecks.
 
@@ -93,7 +93,7 @@ You can configure:
 
 ## Default packaged configuration
 
-- `model`: `gemini-2.5-flash-preview-05-20`
+- `model`: `gemini-2.5-flash`
 - `active_profile`: `MCQ`
 - `profiles`: `MCQ`, `Cloze`, `Basic` with default field maps
 - `show_welcome`: `true`
@@ -109,7 +109,7 @@ On startup, built-in prompts are seeded into config if missing.
 
 - `__init__.py` — Main add-on implementation loaded by Anki.
 - `config.json` — Packaged default config for fresh installs.
-- `manifest.json` — Add-on metadata and packaged default config.
+- `manifest.json` — Minimal Anki add-on metadata used for local `.ankiaddon` imports.
 - `build.py` — Build script to create `.ankiaddon` packages.
 - `README.md` — Project documentation.
 
@@ -121,7 +121,7 @@ On startup, built-in prompts are seeded into config if missing.
 python build.py
 ```
 
-On success, the build script generates:
+The build script validates `manifest.json` before packaging so Anki receives the required top-level `package` and `name` metadata. On success, it generates:
 
 - `anki_mcq_importer_ai_batch_generator_v<version>.ankiaddon`
 - `RELEASE_NOTES_v<version>.md`
