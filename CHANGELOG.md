@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [4.2.1] - 2026-06-10
+
+### Fixed
+- Simplified `manifest.json` to Anki-supported add-on metadata so local `.ankiaddon` imports do not fail manifest validation.
+- Added build-time manifest validation before packaging release archives.
+
 ## [4.2.0] - 2026-02-18
 
 ### Added

@@ -5,6 +5,7 @@ Creates .ankiaddon package for distribution.
 """
 
 import os
+import re
 import zipfile
 import json
 from datetime import datetime
@@ -25,20 +26,69 @@ OPTIONAL_FILES = [
 ]
 
 
+REQUIRED_MANIFEST_KEYS = ("package", "name")
+MANIFEST_KEY_TYPES = {
+    "package": str,
+    "name": str,
+    "mod": (int, float),
+    "conflicts": list,
+    "min_point_version": (int, float),
+    "max_point_version": (int, float),
+    "branch_index": (int, float),
+    "human_version": str,
+    "homepage": str,
+}
+
+
+def load_manifest():
+    """Load manifest.json as UTF-8 JSON."""
+    with open('manifest.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def validate_manifest():
+    """Validate manifest.json against Anki's local .ankiaddon import requirements."""
+
+    manifest = load_manifest()
+
+    for key in REQUIRED_MANIFEST_KEYS:
+        if not isinstance(manifest.get(key), str) or not manifest[key].strip():
+            raise ValueError(f"manifest.json must contain a non-empty string '{key}' key")
+
+    package = manifest["package"]
+    if os.path.basename(package) != package or package in {".", ".."}:
+        raise ValueError("manifest.json 'package' must be a plain folder name, not a path")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", package):
+        raise ValueError(
+            "manifest.json 'package' should contain only letters, numbers, dots, underscores, or hyphens"
+        )
+
+    for key, expected_type in MANIFEST_KEY_TYPES.items():
+        if key in manifest and not isinstance(manifest[key], expected_type):
+            raise ValueError(f"manifest.json '{key}' has the wrong type")
+
+    if "conflicts" in manifest and not all(
+        isinstance(item, str) for item in manifest["conflicts"]
+    ):
+        raise ValueError("manifest.json 'conflicts' must be a list of strings")
+
+    return manifest
+
+
 def get_version():
     """Extract version from manifest.json"""
-    with open('manifest.json', 'r', encoding='utf-8') as f:
-        manifest = json.load(f)
-        return manifest.get('version', '0.0.0')
+    manifest = load_manifest()
+    return manifest.get('human_version', manifest.get('version', '0.0.0'))
 
 
 def create_package():
     """Create .ankiaddon package"""
 
+    manifest = validate_manifest()
     version = get_version()
     output_filename = f'anki_mcq_importer_ai_batch_generator_v{version}.ankiaddon'
 
-    print(f"Building Anki MCQ Importer - AI Batch Generator v{version}")
+    print(f"Building {manifest['name']} v{version}")
     print(f"Output: {output_filename}")
     print("-" * 50)
 
