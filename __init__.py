@@ -31,11 +31,10 @@ DEFAULT_GITHUB_REPO = "anki-boi/True-Anki-MCQ-Note-Template"
 NOTE_TYPE_DOWNLOAD_URL = "https://github.com/anki-boi/True-Anki-MCQ-Note-Template/releases/latest"
 SUPPORTED_IMAGE_FORMATS = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')
 MAX_FILE_SIZE_MB = 20
-GEMINI_MODELS = [
-    "gemini-2.5-flash-preview-05-20",
-    "gemini-2.5-pro-preview-06-05",
+GEMINI_MODELS_FALLBACK = [
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
     "gemini-2.0-flash",
-    "gemini-2.0-pro",
 ]
 
 # Logical field slot identifiers (never exposed as Anki field names directly)
@@ -356,7 +355,7 @@ def get_default_config() -> Dict:
         profiles[key] = p
     return {
         "api_key": "",
-        "model": "gemini-2.5-flash-preview-05-20",
+        "model": "gemini-2.5-flash",
         "active_profile": "MCQ",
         "profiles": profiles,
         "show_welcome": True,
@@ -437,10 +436,6 @@ def log_error(context: str, error: Exception) -> str:
 def validate_api_key(api_key: str) -> Tuple[bool, str]:
     if not api_key or not api_key.strip():
         return False, "API key cannot be empty"
-    if not api_key.startswith("AIzaSy"):
-        return False, "Invalid API key format. Gemini API keys start with 'AIzaSy'"
-    if len(api_key) < 30:
-        return False, "API key appears too short. Please verify your key."
     return True, "API key format looks valid"
 
 
@@ -498,7 +493,7 @@ def choose_model_from_list(api_key: str, preferred: Optional[str] = None) -> Tup
         return False, None, msg, []
     if preferred and preferred in models:
         return True, preferred, msg, models
-    for c in ["gemini-2.5-flash-preview-05-20", "gemini-2.5-pro-preview-06-05", "gemini-2.0-flash"]:
+    for c in GEMINI_MODELS_FALLBACK:
         if c in models:
             return True, c, msg, models
     return True, models[0], msg, models
@@ -727,7 +722,7 @@ class WelcomeWizard(QDialog):
         layout.addWidget(help_lbl)
 
         self.api_input = QLineEdit()
-        self.api_input.setPlaceholderText("AIzaSy…")
+        self.api_input.setPlaceholderText("Paste your Gemini API key…")
         self.api_input.textChanged.connect(lambda: self.finish_btn.setEnabled(bool(self.api_input.text().strip())))
         layout.addWidget(self.api_input)
 
@@ -898,7 +893,7 @@ class GeminiSettings(QDialog):
         al.addWidget(QLabel("<b>API Key:</b>"))
         self.api_input = QLineEdit(CONFIG.get("api_key", ""))
         self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.api_input.setPlaceholderText("AIzaSy…")
+        self.api_input.setPlaceholderText("Paste your Gemini API key…")
         al.addWidget(self.api_input)
         show_btn = QPushButton("👁 Show/Hide Key")
         show_btn.clicked.connect(self._toggle_key_vis)
@@ -912,9 +907,10 @@ class GeminiSettings(QDialog):
         al.addWidget(QLabel("<b>Gemini Model:</b>"))
         al.addWidget(QLabel("<i>Flash = faster/cheaper · Pro = more capable</i>"))
         self.model_combo = QComboBox()
-        self.model_combo.addItems(GEMINI_MODELS)
+        self.model_combo.addItems(GEMINI_MODELS_FALLBACK)
         self.model_combo.setEditable(True)
-        self.model_combo.setCurrentText(CONFIG.get("model", "gemini-2.5-flash-preview-05-20"))
+        self.model_combo.setCurrentText(CONFIG.get("model", "gemini-2.5-flash"))
+        self._auto_refresh_models()
         al.addWidget(self.model_combo)
         ref_btn = QPushButton("🔄 Refresh Available Models")
         ref_btn.clicked.connect(self._refresh_models)
@@ -1273,6 +1269,20 @@ class GeminiSettings(QDialog):
         self.api_status_lbl.setText(f"<span style='color:{c}'>{i} {msg}</span>")
         if ok: tooltip(f"Connection successful! {lmsg}", period=3000)
 
+    def _auto_refresh_models(self):
+        key = self.api_input.text().strip()
+        if not key:
+            return
+        try:
+            ok, models, msg = list_generate_models(key)
+            if not ok or not models:
+                return
+            cur = self.model_combo.currentText().strip()
+            self.model_combo.clear(); self.model_combo.addItems(models); self.model_combo.setEditable(True)
+            self.model_combo.setCurrentText(cur if cur in models else models[0])
+        except Exception:
+            pass
+
     def _refresh_models(self):
         key = self.api_input.text().strip()
         if not key:
@@ -1390,7 +1400,7 @@ class ImportProgressDialog(QDialog):
 
 def run_importer():
     api_key    = CONFIG.get("api_key", "").strip()
-    model_name = CONFIG.get("model", "gemini-2.5-flash-preview-05-20").strip()
+    model_name = CONFIG.get("model", "gemini-2.5-flash").strip()
 
     if not api_key:
         showWarning("API Key not configured.\n\nPlease set it in Settings.")
@@ -1660,7 +1670,7 @@ def init_addon():
         key = CONFIG.get("api_key", "")
         if key:
             def _chk():
-                ok, msg = test_api_connection(key, CONFIG.get("model", "gemini-2.5-flash-preview-05-20"))
+                ok, msg = test_api_connection(key, CONFIG.get("model", "gemini-2.5-flash"))
                 if not ok: showWarning(f"Gemini API validation failed:\n\n{msg}\n\nCheck Settings.")
             QTimer.singleShot(2000, _chk)
 
